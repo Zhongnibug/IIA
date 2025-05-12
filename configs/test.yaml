@@ -1,0 +1,69 @@
+test:
+  build_test_strategies: strategies.build_test_strategies.auto_test
+  device: cuda
+  log_print_strategies: strategies.log_print_strategies.AutoLogPrint
+  log_print_delimiter: "\t"
+  print:
+    print_freq: ~
+    print_summary: True
+    print_post_process: True
+    print_eval: True
+  log:
+    log_summary: True
+    log_post_process: True
+    log_eval: True
+
+WORKFLOW:
+
+  model:
+    FUNCTION: SELF.model.build_model_strategies
+    INPUT: 
+      model_configs: SELF.model
+      workdata: WORKDATA
+      workdata_word: WORKDATA.workdata_word
+    OUTPUT:
+    - WORKDATA.model
+
+  inherit_test_args:
+    FUNCTION: strategies.configs_inherit_strategies.auto_args_inherit
+    INPUT: 
+      configs: SELF
+      auto_inherit_config: test
+      self_word: WORKDATA.self_word
+    OUTPUT: ~
+
+  test_dataset:
+    FUNCTION: strategies.build_dataset_strategies.AutoDataset
+    INPUT:
+      configs: SELF
+      tag: test
+      workdata: WORKDATA
+      self_word: WORKDATA.self_word
+      workdata_word: WORKDATA.workdata_word
+    OUTPUT:
+      - WORKDATA.test_dataset
+
+  test_dataload:
+    FUNCTION: strategies.build_dataload_strategies.auto_dataload
+    INPUT:
+      custom_dataset: WORKDATA.test_dataset
+      configs: SELF
+      workdata: WORKDATA
+      tag: test
+    OUTPUT:
+    - WORKDATA.test_dataloader
+    - WORKDATA.test_use_list
+
+  test:
+    FUNCTION: strategies.build_test_strategies.auto_test
+    INPUT:
+      model: WORKDATA.model
+      save_path: SELF.WORKPATH
+      log: SELF.LOG
+      is_print: SELF.PRINT
+      model_weights_path: WORKDATA.model_weights_path
+      test_cfg: SELF.test
+      test_dataloader: WORKDATA.test_dataloader
+      test_use_list: WORKDATA.test_use_list
+    OUTPUT:
+    - DETAIL

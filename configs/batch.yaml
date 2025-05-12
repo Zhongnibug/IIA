@@ -1,0 +1,28 @@
+GROUP: True
+
+INHERIT: ~
+#  test: test  <==>  SELF.test: SELF.test
+#  WORKDATA.model: WORKDATA.model
+BRANCH:
+  # # list | range
+  # type: list
+  # # key: SELF.seed
+  # key: seed
+  # value: [1, 2, 3, 4, 5]
+  type: list
+  key: dataload.train.batch_size
+  value: [64]
+
+group:
+  group_strategies: strategies.group_strategies.pass_and_work
+  
+WORKFLOW:
+  pass_and_work:
+    FUNCTION: SELF.group.group_strategies
+    INPUT:
+      configs: SELF
+      workdata: WORKDATA
+      path_dir: SELF.MAINPATH
+      group_cfg: SELF.group
+    OUTPUT: 
+    - DETAIL

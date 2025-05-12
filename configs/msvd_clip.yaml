@@ -1,0 +1,102 @@
+GROUP: True
+INHERIT:
+  features: features
+  dataset: dataset
+BRANCH: ~
+
+group:
+  group_strategies: strategies.group_strategies.pass_and_work
+
+features:
+  train: data/MSVD/MSVD.h5
+  val: data/MSVD/MSVD.h5
+  test: data/MSVD/MSVD.h5
+  features_shape: [512]
+  features_sample: 20
+
+dataset:
+  build_dataset_strategies: strategies.build_dataset_strategies.AutoDataset
+  train:
+    INIT:
+      groundtruths:
+        FUNCTION: strategies.dataset_load_data_strategies.open_and_load_pkl
+        INPUT:
+          pkl_path: SELF.captions.train
+        OUTPUT: 
+        - DATASET.groundtruths
+        OUTPUTtype:
+        - NOCHANGE
+      features:
+        FUNCTION: strategies.dataset_load_data_strategies.open_and_read_h5_according_keys_equidistant
+        INPUT:
+          h5_path: SELF.features.train
+          keys: DATASET.split_names
+          nums: SELF.features.features_sample
+          # 'RN101', 'VIT', 'VIT768'
+          # 512, 512, 768
+          main_key: VIT.train
+        OUTPUT:
+        - DATASET.features
+        - DATASET.features_masks
+        OUTPUTtype:
+        - torch.FloatTensor
+        - torch.BoolTensor
+
+  val:
+    INIT:
+      groundtruths: 
+        FUNCTION: strategies.dataset_load_data_strategies.open_and_load_pkl
+        INPUT:
+          pkl_path: SELF.captions.val
+        OUTPUT: 
+        - DATASET.groundtruths
+        OUTPUTtype:
+        - NOCHANGE
+      features:
+        FUNCTION: strategies.dataset_load_data_strategies.open_and_read_h5_according_keys_equidistant
+        INPUT:
+          h5_path: SELF.features.train
+          keys: DATASET.split_names
+          nums: SELF.features.features_sample
+          main_key: VIT.valid
+        OUTPUT:
+        - DATASET.features
+        - DATASET.features_masks
+        OUTPUTtype:
+        - torch.FloatTensor
+        - torch.BoolTensor
+
+  test:
+    INIT:
+      groundtruths: 
+        FUNCTION: strategies.dataset_load_data_strategies.open_and_load_pkl
+        INPUT:
+          pkl_path: SELF.captions.test
+        OUTPUT: 
+        - DATASET.groundtruths
+        OUTPUTtype:
+        - NOCHANGE
+      features:
+        FUNCTION: strategies.dataset_load_data_strategies.open_and_read_h5_according_keys_equidistant
+        INPUT:
+          h5_path: SELF.features.train
+          keys: DATASET.split_names
+          nums: SELF.features.features_sample
+          main_key: VIT.test
+        OUTPUT:
+        - DATASET.features
+        - DATASET.features_masks
+        OUTPUTtype:
+        - torch.FloatTensor
+        - torch.BoolTensor
+
+WORKFLOW:
+  pass_and_work:
+    FUNCTION: SELF.group.group_strategies
+    INPUT:
+      configs: SELF
+      workdata: WORKDATA
+      path_dir: SELF.MAINPATH
+      group_cfg: SELF.group
+    OUTPUT: 
+    - DETAIL

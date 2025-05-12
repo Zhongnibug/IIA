@@ -1,0 +1,61 @@
+GROUP: True
+
+INHERIT:
+  tag: tag
+  captions: captions
+  WORKDATA.vocabulary: WORKDATA.vocabulary
+#  test: test  <==>  SELF.test: SELF.test
+#  WORKDATA.model: WORKDATA.model
+BRANCH: ~
+  # # list | range
+  # type: list
+  # # key: SELF.seed
+  # key: seed
+  # value: [1, 2, 3, 4, 5]
+
+tag: msrvtt
+
+group:
+  group_strategies: strategies.group_strategies.pass_and_work
+
+captions:
+  train: data/MSRVTT/train.pkl
+  val: data/MSRVTT/val.pkl
+  test: data/MSRVTT/test.pkl
+  vocabulary: data/MSRVTT/vocabulary.pkl
+
+  pad: <PAD>
+  unk: <UNK>
+  bos: <BOS>
+  eos: <EOS>
+
+  vocab_num: ~
+  pad_idx: ~
+  unk_idx: ~
+  bos_idx: ~
+  eos_idx: ~
+
+  caption_limit_len: [3,20]
+
+WORKFLOW:
+  load_info:
+    FUNCTION: strategies.load_info_strategies.get_data_info_for_video_caption
+    INPUT: 
+      configs: SELF
+    OUTPUT:
+    - WORKDATA.vocabulary
+    - SELF.captions.vocab_num
+    - SELF.captions.pad_idx
+    - SELF.captions.unk_idx
+    - SELF.captions.bos_idx
+    - SELF.captions.eos_idx
+
+  pass_and_work:
+    FUNCTION: SELF.group.group_strategies
+    INPUT:
+      configs: SELF
+      workdata: WORKDATA
+      path_dir: SELF.MAINPATH
+      group_cfg: SELF.group
+    OUTPUT: 
+    - DETAIL
