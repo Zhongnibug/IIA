@@ -1,0 +1,56 @@
+GROUP: True
+
+BRANCH: ~
+INHERIT: 
+  WORKDATA.bleu_score: WORKDATA.bleu_score
+
+captions:
+  bleu_score_name: bleu_score
+
+group:
+  group_strategies: strategies.group_strategies.pass_and_work
+
+bleu_score:
+  load: 
+    FUNCTION: utils.get_obj.get_saved
+    INPUT:
+      saved_folder_path: SELF.WORKPATH
+      name: SELF.captions.bleu_score_name
+      log: SELF.LOG
+    OUTPUT:
+    - WORKDATA.bleu_score   
+
+  build: 
+    FUNCTION: strategies.bleu_score_strategies.get_bleu_score
+    INPUT:
+      train_gt_path: SELF.captions.train
+      log: SELF.LOG
+      save_path: SELF.WORKPATH
+      name: SELF.captions.bleu_score_name
+      caption_limit_len: SELF.captions.caption_limit_len
+    OUTPUT:
+    - WORKDATA.bleu_score
+
+WORKFLOW:
+  get_bleu_score:
+    FUNCTION: strategies.load_info_strategies.load_or_build
+    INPUT:
+      load_task: SELF.bleu_score.load
+      build_task: SELF.bleu_score.build
+      path: SELF.WORKPATH
+      name: SELF.captions.bleu_score_name
+      configs: SELF
+      workdata: WORKDATA
+      name_suffix: pkl
+    OUTPUT:
+    - DETAIL
+
+  pass_and_work:
+    FUNCTION: SELF.group.group_strategies
+    INPUT:
+      configs: SELF
+      workdata: WORKDATA
+      path_dir: SELF.MAINPATH
+      group_cfg: SELF.group
+    OUTPUT: 
+    - DETAIL

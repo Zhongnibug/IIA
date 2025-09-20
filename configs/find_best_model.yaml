@@ -1,0 +1,77 @@
+GROUP: True
+
+INHERIT:
+  WORKDATA.model: WORKDATA.model
+  WORKDATA.model_weights_path: SELF.find_best_checkpoint.final_path
+#  test: test  <==>  SELF.test: SELF.test
+#  WORKDATA.model: WORKDATA.model
+BRANCH: ~
+  # # list | range
+  # type: list
+  # # key: SELF.seed
+  # key: seed
+  # value: [1, 2, 3, 4, 5]
+
+find_best_checkpoint:
+  name: best
+  suffix: pth
+  root_path: SELF.PARENTPATH
+  final_path: ~
+  sub_dir: checkpoint
+  non_root_dir_list:
+  - train
+
+  compare_conf:
+    model: SELF.model
+    dataset: SELF.dataset
+    dataload: SELF.dataload
+    train: SELF.train
+
+train:
+  device: cuda
+  log_print_strategies: strategies.log_print_strategies.AutoLogPrint
+  log_print_delimiter: "\t"
+
+  print:
+    print_freq: 50
+    print_summary: True
+  log:
+    log_summary: True
+
+  save_only_best_and_last_ckpt: True
+
+group:
+  group_strategies: strategies.group_strategies.pass_and_work
+
+WORKFLOW:
+  model:
+    FUNCTION: SELF.model.build_model_strategies
+    INPUT: 
+      model_configs: SELF.model
+    OUTPUT:
+    - WORKDATA.model
+
+  inherit_find_best_checkpoint:
+    FUNCTION: strategies.configs_inherit_strategies.auto_args_inherit
+    INPUT: 
+      configs: SELF
+      auto_inherit_config: find_best_checkpoint
+      self_word: WORKDATA.self_word
+    OUTPUT: ~
+
+  get_best_checkpoint_path:
+    FUNCTION: strategies.group_strategies.group_get_file_path
+    INPUT:
+      get_file_configs: SELF.find_best_checkpoint
+    OUTPUT:
+    - SELF.find_best_checkpoint.final_path
+
+  pass_and_work:
+    FUNCTION: SELF.group.group_strategies
+    INPUT:
+      configs: SELF
+      workdata: WORKDATA
+      path_dir: SELF.MAINPATH
+      group_cfg: SELF.group
+    OUTPUT: 
+    - DETAIL

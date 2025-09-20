@@ -1,0 +1,56 @@
+GROUP: True
+
+BRANCH: ~
+INHERIT: 
+  WORKDATA.cider_score: WORKDATA.cider_score
+
+captions:
+  cider_score_name: cider_score
+
+group:
+  group_strategies: strategies.group_strategies.pass_and_work
+
+cider_score:
+  load: 
+    FUNCTION: utils.get_obj.get_saved
+    INPUT:
+      saved_folder_path: SELF.WORKPATH
+      name: SELF.captions.cider_score_name
+      log: SELF.LOG
+    OUTPUT:
+    - WORKDATA.cider_score   
+
+  build: 
+    FUNCTION: strategies.cider_score_strategies.get_cider_score
+    INPUT:
+      train_gt_path: SELF.captions.train
+      log: SELF.LOG
+      save_path: SELF.WORKPATH
+      name: SELF.captions.cider_score_name
+      caption_limit_len: SELF.captions.caption_limit_len
+    OUTPUT:
+    - WORKDATA.cider_score
+
+WORKFLOW:
+  get_cider_score:
+    FUNCTION: strategies.load_info_strategies.load_or_build
+    INPUT:
+      load_task: SELF.cider_score.load
+      build_task: SELF.cider_score.build
+      path: SELF.WORKPATH
+      name: SELF.captions.cider_score_name
+      configs: SELF
+      workdata: WORKDATA
+      name_suffix: pkl
+    OUTPUT:
+    - DETAIL
+
+  pass_and_work:
+    FUNCTION: SELF.group.group_strategies
+    INPUT:
+      configs: SELF
+      workdata: WORKDATA
+      path_dir: SELF.MAINPATH
+      group_cfg: SELF.group
+    OUTPUT: 
+    - DETAIL

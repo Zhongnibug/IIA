@@ -1,0 +1,396 @@
+GROUP: True
+INHERIT:
+  model: model
+  dataload: dataload
+  train: train
+  test: test
+  WORKDATA.model_weights_path: model.model_path
+#  test: test  <==>  SELF.test: SELF.test
+#  WORKDATA.model: WORKDATA.model
+BRANCH: ~
+  # # list | range
+  # type: list
+  # # key: SELF.seed
+  # key: seed
+  # value: [1, 2, 3, 4, 5]
+
+captions:
+  bleu_control: 0
+  bleu_keep_self: 0.0
+  cider_keep_self: 0.0
+
+group:
+  group_strategies: strategies.group_strategies.pass_and_work
+
+model:
+  build_model_strategies: strategies.build_model_strategies.auto_build_model
+  d_model: 512
+  num_heads: 8
+  num_encoder_layers: 2
+  num_decoder_layers: 2
+  dim_feedforward: 2048
+  dropout: 0.1
+  normalize_before: False
+  activation: relu
+  src_vocab: ~
+  tgt_vocab: SELF.captions.vocab_num
+
+  features_shape: SELF.features.features_shape
+
+  struct_ratio: 0.5
+
+  model_path: ~
+
+  load_model:
+    struct_model: ~
+    seman_model: ~
+  
+  frozen_list:
+  - struct_model
+  - seman_model
+
+  main: 
+    module: models.incremental_info_aware.IncrementalInformationAwareFussion
+    args:
+      struct_model: struct_model
+      seman_model: seman_model
+      struct_ratio: struct_ratio
+
+  struct_model: 
+    module: models.incremental_info_aware.IncrementalInformationAware
+    args:
+      encoder: encoder
+      decoder: decoder
+      src_embed: src_embed
+      tgt_embed: tgt_embed
+      src_pos: encoder_pos
+      tgt_pos: decoder_pos
+      generator: generator
+      iia_encoder: iia_encoder
+      iia_embed: iia_embed
+      iia_pos: iia_pos
+
+  seman_model: 
+    module: models.incremental_info_aware.IncrementalInformationAware
+    args:
+      encoder: encoder
+      decoder: decoder
+      src_embed: src_embed
+      tgt_embed: tgt_embed
+      src_pos: encoder_pos
+      tgt_pos: decoder_pos
+      generator: generator
+      iia_encoder: iia_encoder
+      iia_embed: iia_embed
+      iia_pos: iia_pos
+
+  iia_encoder:
+    module: models.transformer.Encoder
+    args:
+      layer: encoderlayer
+      num_encoder_layers: num_encoder_layers
+      normalize_before: normalize_before
+      norm: norm
+
+  iia_embed:
+    module: models.othermodels.SimpleChangeShape
+    args:
+      original_shape: features_shape
+      changed_shape: d_model
+
+  iia_pos:
+    module: models.transformer.PositionalEncoding
+    args:
+      d_model: d_model
+      dropout: dropout
+
+  encoder: 
+    module: models.transformer.Encoder
+    args:
+      layer: encoderlayer
+      num_encoder_layers: num_encoder_layers
+      normalize_before: normalize_before
+      norm: norm
+
+  decoder:
+    module: models.transformer.Decoder
+    args:
+      layer: decoderlayer
+      num_decoder_layers: num_decoder_layers
+      normalize_before: normalize_before
+      norm: norm
+
+  encoderlayer:
+    module: models.transformer.EncoderLayer
+    args:
+      d_model: d_model
+      self_attn: attention
+      feed_forward: feedforward
+      connection: connction
+
+  decoderlayer:
+    module: models.transformer.DecoderLayer
+    args:
+      d_model: d_model
+      self_attn: attention
+      src_attn: attention
+      feed_forward: feedforward
+      connection: connction
+
+  connction:
+    module: models.transformer.SublayerConnection
+    args:
+      d_model: d_model
+      dropout: dropout
+      normalize_before: normalize_before
+      norm: norm
+
+  src_embed:
+    module: models.othermodels.SimpleChangeShape
+    args:
+      original_shape: features_shape
+      changed_shape: d_model
+  
+  tgt_embed:
+    module: models.transformer.Embeddings
+    args: 
+      d_model: d_model
+      vocab: tgt_vocab
+
+  encoder_pos:
+    module: models.transformer.PositionalEncoding
+    args:
+      d_model: d_model
+      dropout: dropout
+
+  decoder_pos:
+    module: models.transformer.PositionalEncoding
+    args:
+      d_model: d_model
+      dropout: dropout
+
+  attention:
+    module: models.transformer.MultiheadAttention
+    args:
+      d_model: d_model
+      num_heads: num_heads
+      dropout: dropout
+
+  norm:
+    module: torch.nn.LayerNorm
+    args:
+      normalized_shape: d_model
+
+  feedforward:
+    module: models.transformer.PositionwiseFeedForward
+    args:
+      d_model: d_model
+      dim_feedforward: dim_feedforward
+      dropout: dropout
+      activation: activation
+
+  generator:
+    module: models.transformer.Generator
+    args:
+      d_model: d_model
+      vocab: tgt_vocab
+
+dataset:
+
+  val:
+    BRIDGE: DATASET.videonames
+    INIT:
+      groundtruths: ~
+      videonames:
+        FUNCTION: strategies.dataset_load_data_strategies.caption_get_name_list
+        INPUT: 
+          groundtruths: DATASET.groundtruths
+        OUTPUT:
+        - DATASET.videonames
+        - DATASET.length
+        - DATASET.split_names
+        OUTPUTtype:
+        - NOCHANGE
+        - ~
+        - ~
+      features: ~
+      high_src_masks:
+        FUNCTION: strategies.dataset_load_data_strategies.repeat_tensor_like
+        INPUT: 
+          muti_tensor_like: DATASET.features_masks
+          repeat_num: 2
+        OUTPUT:
+        - DATASET.high_src_masks
+        OUTPUTtype:
+        - torch.BoolTensor
+
+  test:
+    BRIDGE: DATASET.videonames
+    INIT:
+      groundtruths: ~
+      videonames:
+        FUNCTION: strategies.dataset_load_data_strategies.caption_get_name_list
+        INPUT: 
+          groundtruths: DATASET.groundtruths
+        OUTPUT:
+        - DATASET.videonames
+        - DATASET.length
+        - DATASET.split_names
+        OUTPUTtype:
+        - NOCHANGE
+        - ~
+        - ~
+      features: ~
+      high_src_masks:
+        FUNCTION: strategies.dataset_load_data_strategies.repeat_tensor_like
+        INPUT: 
+          muti_tensor_like: DATASET.features_masks
+          repeat_num: 2
+        OUTPUT:
+        - DATASET.high_src_masks
+        OUTPUTtype:
+        - torch.BoolTensor
+
+dataload:
+
+  test:
+    collate_function_strategies: strategies.collate_function_strategies.auto_collate_function
+    batch_size: 128
+    shuffle: False
+
+    BATCH:
+      groundtruths:
+        FUNCTION: strategies.collate_get_batch_strategies.easy_list
+        INPUT:
+          data: groundtruths
+        OUTPUT:
+          groundtruths: True
+
+      videonames:
+        FUNCTION: strategies.collate_get_batch_strategies.easy_list
+        INPUT:
+          data: videonames
+        OUTPUT:
+          videonames: True
+
+      batch_size:
+        FUNCTION: strategies.collate_get_batch_strategies.get_batch_size
+        INPUT: 
+          batch_data: videonames
+        OUTPUT:
+          batch_size: True
+
+      features:
+        FUNCTION: strategies.collate_get_batch_strategies.features_mask
+        INPUT:
+          features: features
+          features_masks: features_masks
+        OUTPUT:
+          ret_features: True
+          ret_features_masks: True
+      
+      high_src_masks:
+        FUNCTION: strategies.collate_get_batch_strategies.easy_stack
+        INPUT:
+          data: high_src_masks
+        OUTPUT:
+          ret_high_src_masks: True
+
+test:
+  model_run:
+    model_run_strategies: strategies.model_run_strategies.seq2seq_auto_run
+    model_run_func: test_beam_search
+    model_args:
+      none_step:
+        encode:
+          args:
+            src: ret_features
+            key_padding_mask: ret_features_masks
+          return:
+          - src_struct
+          - src_struct_incre
+          - src_struct_mix
+          - src_seman
+          - src_seman_incre
+          - src_seman_mix
+      step:
+        decode:
+          args:
+            struct_memory: src_struct_mix
+            seman_memory: src_seman_mix
+            tgt: STEPDEC
+            src_key_padding_mask: ret_high_src_masks
+            tgt_attn_mask: step_tgt_attn_mask
+          return:
+          - STEPLOG
+
+    model_out:
+    - test_out
+    model_settings:
+      max_step: SELF.test.max_step
+      bos_idx: SELF.captions.bos_idx
+      eos_idx: SELF.captions.eos_idx
+      pad_idx: SELF.captions.pad_idx
+      beam_size: SELF.test.beam_size
+      step_log_name: STEPLOG
+      step_dec_name: STEPDEC
+      repeat_args_name_dict:
+        src_struct_mix: src_struct_mix
+        src_seman_mix: src_seman_mix
+        ret_high_src_masks: ret_high_src_masks
+      
+      step_data:
+        tgt_attn_mask: 
+          args: {}
+          return:
+          - step_tgt_attn_mask
+      collect_args_list:
+      - src_struct_mix
+      - src_seman_mix
+      - ret_high_src_masks
+  
+  beam_size: 5
+  max_step: 60
+
+  post_process:
+    post_process_strategies: strategies.post_process_strategies.LanguagePostProcess
+    init_args:
+      vocabulary_path: SELF.captions.vocabulary
+      bos_idx: SELF.captions.bos_idx
+      eos_idx: SELF.captions.eos_idx
+    process:
+      videonames: videonames
+      outs: test_out
+      batch_size: batch_size
+    post_process_out:
+    - post_process_out
+
+  eval:
+    build_eval_strategies: strategies.build_eval_strategies.LanguageEval
+    init_args:
+      eval_class_list: ["Bleu_1", "Bleu_2", "Bleu_3", "Bleu_4", "CIDEr", "METEOR", "ROUGE", "Sum"]
+    collect_data:
+      predictions: post_process_out
+      gts: groundtruths
+    eval_summary: ~
+    eval_out:
+    - scores          
+
+WORKFLOW:
+  inherit_model_args:
+    FUNCTION: strategies.configs_inherit_strategies.auto_args_inherit
+    INPUT: 
+      configs: SELF
+      auto_inherit_config: model
+      self_word: WORKDATA.self_word
+    OUTPUT: ~
+
+  pass_and_work:
+    FUNCTION: SELF.group.group_strategies
+    INPUT:
+      configs: SELF
+      workdata: WORKDATA
+      path_dir: SELF.MAINPATH
+      group_cfg: SELF.group
+    OUTPUT: 
+    - DETAIL

@@ -1,0 +1,99 @@
+GROUP: True
+
+BRANCH: ~
+INHERIT: 
+  WORKDATA.seman_pair: WORKDATA.seman_pair
+
+captions:
+  seman_pair_name: seman_pair
+  bleu_control: 0
+  keep_self: 0.6
+
+group:
+  group_strategies: strategies.group_strategies.pass_and_work
+
+bleu_score:
+  name: bleu_score
+  suffix: pkl
+  root_path: SELF.GLOBAL.PATH
+  final_path: ~
+  sub_dir: ~
+  strict_non_root_dir_list:
+  - SELF.tag
+  - bleu_score
+  compare_conf:
+    captions:
+      caption_limit_len: SELF.captions.caption_limit_len
+      bleu_score_name: bleu_score
+
+seman_pair:
+  load: 
+    FUNCTION: utils.get_obj.get_saved
+    INPUT:
+      saved_folder_path: SELF.WORKPATH
+      name: SELF.captions.seman_pair_name
+      log: SELF.LOG
+    OUTPUT:
+    - WORKDATA.seman_pair
+
+  build: 
+    FUNCTION: strategies.build_pair_strategies.get_seman_pair
+    INPUT:
+      train_gt_path: SELF.captions.train
+      cider_score: WORKDATA.cider_score
+      bleu_score: WORKDATA.bleu_score
+      bleu_control: SELF.captions.bleu_control
+      log: SELF.LOG
+      save_path: SELF.WORKPATH
+      name: SELF.captions.seman_pair_name
+      caption_limit_len: SELF.captions.caption_limit_len
+      keep_self: SELF.captions.keep_self
+    OUTPUT:
+    - WORKDATA.seman_pair
+
+WORKFLOW:
+
+  inherit_bleu_score:
+    FUNCTION: strategies.configs_inherit_strategies.auto_args_inherit
+    INPUT: 
+      configs: SELF
+      auto_inherit_config: bleu_score
+      self_word: WORKDATA.self_word
+    OUTPUT: ~
+
+  get_bleu_score_path:
+    FUNCTION: strategies.group_strategies.group_get_file_path
+    INPUT:
+      get_file_configs: SELF.bleu_score
+    OUTPUT:
+    - SELF.bleu_score.final_path
+
+  get_bleu_score:
+    FUNCTION: strategies.load_info_strategies.load_pkl
+    INPUT:
+      path: SELF.bleu_score.final_path
+    OUTPUT:
+    - WORKDATA.bleu_score
+
+  get_seman_pair:
+    FUNCTION: strategies.load_info_strategies.load_or_build
+    INPUT:
+      load_task: SELF.seman_pair.load
+      build_task: SELF.seman_pair.build
+      path: SELF.WORKPATH
+      name: SELF.captions.seman_pair_name
+      configs: SELF
+      workdata: WORKDATA
+      name_suffix: pkl
+    OUTPUT:
+    - DETAIL
+
+  pass_and_work:
+    FUNCTION: SELF.group.group_strategies
+    INPUT:
+      configs: SELF
+      workdata: WORKDATA
+      path_dir: SELF.MAINPATH
+      group_cfg: SELF.group
+    OUTPUT: 
+    - DETAIL

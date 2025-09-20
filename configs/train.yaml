@@ -1,0 +1,165 @@
+seed: 1
+
+train:
+  device: cuda
+  log_print_strategies: strategies.log_print_strategies.AutoLogPrint
+  log_print_delimiter: "\t"
+
+  print:
+    print_freq: 50
+    print_summary: True
+  log:
+    log_summary: True
+
+  save_only_best_and_last_ckpt: True
+
+val:
+  print:
+    print_freq: ~
+    print_summary: True
+    print_post_process: True
+    print_eval: True
+  log:
+    log_summary: True
+    log_post_process: True
+    log_eval: True
+  
+test:
+  build_test_strategies: strategies.build_test_strategies.auto_test
+
+  print:
+    print_freq: ~
+    print_summary: True
+    print_post_process: True
+    print_eval: True
+  log:
+    log_summary: True
+    log_post_process: True
+    log_eval: True
+
+WORKFLOW:
+  set_random_seed:
+    FUNCTION: strategies.set_seed_strategies.set_random_seed
+    INPUT: 
+      seed: SELF.seed
+    OUTPUT: ~
+
+  model:
+    FUNCTION: SELF.model.build_model_strategies
+    INPUT: 
+      model_configs: SELF.model
+      workdata: WORKDATA
+      workdata_word: WORKDATA.workdata_word
+    OUTPUT:
+    - WORKDATA.model
+
+  train_dataset:
+    FUNCTION: strategies.build_dataset_strategies.AutoDataset
+    INPUT:
+      configs: SELF
+      tag: train
+      workdata: WORKDATA
+      self_word: WORKDATA.self_word
+      workdata_word: WORKDATA.workdata_word
+    OUTPUT:
+      - WORKDATA.train_dataset
+  
+  val_dataset:
+    FUNCTION: strategies.build_dataset_strategies.AutoDataset
+    INPUT:
+      configs: SELF
+      tag: val
+      workdata: WORKDATA
+      self_word: WORKDATA.self_word
+      workdata_word: WORKDATA.workdata_word
+    OUTPUT:
+      - WORKDATA.val_dataset
+
+  test_dataset:
+    FUNCTION: strategies.build_dataset_strategies.AutoDataset
+    INPUT:
+      configs: SELF
+      tag: test
+      workdata: WORKDATA
+      self_word: WORKDATA.self_word
+      workdata_word: WORKDATA.workdata_word
+    OUTPUT:
+      - WORKDATA.test_dataset
+
+  train_dataload:
+    FUNCTION: strategies.build_dataload_strategies.auto_dataload
+    INPUT:
+      custom_dataset: WORKDATA.train_dataset
+      configs: SELF
+      workdata: WORKDATA
+      tag: train
+    OUTPUT:
+    - WORKDATA.train_dataloader
+    - WORKDATA.train_use_list
+  
+  val_dataload:
+    FUNCTION: strategies.build_dataload_strategies.auto_dataload
+    INPUT:
+      custom_dataset: WORKDATA.val_dataset
+      configs: SELF
+      workdata: WORKDATA
+      tag: test
+    OUTPUT:
+    - WORKDATA.val_dataloader
+    - WORKDATA.val_use_list
+
+  test_dataload:
+    FUNCTION: strategies.build_dataload_strategies.auto_dataload
+    INPUT:
+      custom_dataset: WORKDATA.test_dataset
+      configs: SELF
+      workdata: WORKDATA
+      tag: test
+    OUTPUT:
+    - WORKDATA.test_dataloader
+    - WORKDATA.test_use_list
+
+  inherit_train_args:
+    FUNCTION: strategies.configs_inherit_strategies.auto_args_inherit
+    INPUT: 
+      configs: SELF
+      auto_inherit_config: train
+      self_word: WORKDATA.self_word
+    OUTPUT: ~
+
+  inherit_val_args:
+    FUNCTION: strategies.configs_inherit_strategies.auto_args_inherit
+    INPUT: 
+      configs: SELF
+      auto_inherit_config: val
+      self_word: WORKDATA.self_word
+    OUTPUT: ~
+
+  inherit_test_args:
+    FUNCTION: strategies.configs_inherit_strategies.auto_args_inherit
+    INPUT: 
+      configs: SELF
+      auto_inherit_config: test
+      self_word: WORKDATA.self_word
+    OUTPUT: ~
+
+  train:
+    FUNCTION: strategies.build_train_strategies.auto_train
+    INPUT:
+      model: WORKDATA.model
+      save_path: SELF.WORKPATH
+      log: SELF.LOG
+      is_print: SELF.PRINT
+      workdata: WORKDATA
+      train_cfg: SELF.train
+      train_dataloader: WORKDATA.train_dataloader
+      train_use_list: WORKDATA.train_use_list
+      val_cfg: SELF.val
+      val_dataloader: WORKDATA.val_dataloader
+      val_use_list: WORKDATA.val_use_list
+      test_cfg: SELF.test
+      test_dataloader: WORKDATA.test_dataloader
+      test_use_list: WORKDATA.test_use_list
+    OUTPUT:
+    - DETAIL
+    - WORKDATA.model_weights_path

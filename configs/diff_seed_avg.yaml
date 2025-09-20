@@ -1,0 +1,40 @@
+GROUP: True
+
+INHERIT: ~
+#  test: test  <==>  SELF.test: SELF.test
+#  WORKDATA.model: WORKDATA.model
+BRANCH:
+  # # list | range
+  # type: list
+  # # key: SELF.seed
+  # key: seed
+  # value: [1, 2, 3, 4, 5]
+  type: list
+  key: seed
+  value: [1,2,3,4,5]
+
+group:
+  group_strategies: strategies.group_strategies.pass_and_work
+  
+WORKFLOW:
+  pass_and_work:
+    FUNCTION: SELF.group.group_strategies
+    INPUT:
+      configs: SELF
+      workdata: WORKDATA
+      path_dir: SELF.MAINPATH
+      group_cfg: SELF.group
+    OUTPUT: 
+    - WORKDATA.keys_dic
+
+  mean_std_group_by_keys:
+    FUNCTION: strategies.group_strategies.mean_std_group_by_keys
+    INPUT:
+      path_dir: SELF.MAINPATH
+      keys_dic: WORKDATA.keys_dic
+      workdata: WORKDATA
+      mean_key: SELF.BRANCH.key
+      mean_value: SELF.BRANCH.value
+      saved_original: False
+    OUTPUT:
+    - DETAIL

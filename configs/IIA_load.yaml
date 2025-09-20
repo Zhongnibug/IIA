@@ -1,0 +1,142 @@
+seed: 1
+GROUP: True
+INHERIT:
+  model.load_model.struct_model: SELF.struct_model.final_path
+  model.load_model.seman_model: SELF.seman_model.final_path
+#  test: test  <==>  SELF.test: SELF.test
+#  WORKDATA.model: WORKDATA.model
+BRANCH: ~
+  # # list | range
+  # type: list
+  # # key: SELF.seed
+  # key: seed
+  # value: [1, 2, 3, 4, 5]
+
+features_name: "{tag}_clip"
+struct_model_dir: "{tag}_struct_IIA"
+seman_model_dir: "{tag}_seman_IIA"
+model_dir: "{tag}_IIA"
+
+struct_model:
+  name: best
+  suffix: pth
+  root_path: SELF.GLOBAL.PATH
+  final_path: ~
+  sub_dir: checkpoint
+  non_root_dir_list:
+  - SELF.struct_model_dir
+  strict_non_root_dir_list:
+  - SELF.tag
+  - SELF.features_name
+  ban_dir_list:
+  - SELF.seman_model_dir
+  - SELF.model_dir
+  - IIA_load
+  - bleu_keep_self
+  - cider_keep_self
+  compare_conf:
+    captions:
+      caption_limit_len: SELF.captions.caption_limit_len
+      bleu_control: SELF.captions.bleu_control
+      keep_self: SELF.captions.bleu_keep_self
+    seed: SELF.seed
+
+seman_model:
+  name: best
+  suffix: pth
+  root_path: SELF.GLOBAL.PATH
+  final_path: ~
+  sub_dir: checkpoint
+  non_root_dir_list:
+  - SELF.seman_model_dir
+  strict_non_root_dir_list:
+  - SELF.tag
+  - SELF.features_name
+  ban_dir_list:
+  - SELF.struct_model_dir
+  - SELF.model_dir
+  - IIA_load
+  - bleu_keep_self
+  - cider_keep_self
+  compare_conf:
+    captions:
+      caption_limit_len: SELF.captions.caption_limit_len
+      bleu_control: SELF.captions.bleu_control
+      keep_self: SELF.captions.cider_keep_self
+    seed: SELF.seed
+
+group:
+  group_strategies: strategies.group_strategies.pass_and_work
+
+WORKFLOW:
+  string_format:
+    FUNCTION: strategies.string_strategies.string_format
+    INPUT: 
+      original_str: SELF.features_name
+      tag: SELF.tag
+    OUTPUT:
+    - SELF.features_name
+
+  struct_model_dir_string_format:
+    FUNCTION: strategies.string_strategies.string_format
+    INPUT: 
+      original_str: SELF.struct_model_dir
+      tag: SELF.tag
+    OUTPUT:
+    - SELF.struct_model_dir
+
+  seman_model_dir_string_format:
+    FUNCTION: strategies.string_strategies.string_format
+    INPUT: 
+      original_str: SELF.seman_model_dir
+      tag: SELF.tag
+    OUTPUT:
+    - SELF.seman_model_dir
+
+  model_dir_string_format:
+    FUNCTION: strategies.string_strategies.string_format
+    INPUT: 
+      original_str: SELF.model_dir
+      tag: SELF.tag
+    OUTPUT:
+    - SELF.model_dir
+
+  inherit_struct_model:
+    FUNCTION: strategies.configs_inherit_strategies.auto_args_inherit
+    INPUT: 
+      configs: SELF
+      auto_inherit_config: struct_model
+      self_word: WORKDATA.self_word
+    OUTPUT: ~
+
+  get_struct_model:
+    FUNCTION: strategies.group_strategies.group_get_file_path
+    INPUT:
+      get_file_configs: SELF.struct_model
+    OUTPUT:
+    - SELF.struct_model.final_path
+
+  inherit_seman_model:
+    FUNCTION: strategies.configs_inherit_strategies.auto_args_inherit
+    INPUT: 
+      configs: SELF
+      auto_inherit_config: seman_model
+      self_word: WORKDATA.self_word
+    OUTPUT: ~
+
+  get_seman_model:
+    FUNCTION: strategies.group_strategies.group_get_file_path
+    INPUT:
+      get_file_configs: SELF.seman_model
+    OUTPUT:
+    - SELF.seman_model.final_path
+
+  pass_and_work:
+    FUNCTION: SELF.group.group_strategies
+    INPUT:
+      configs: SELF
+      workdata: WORKDATA
+      path_dir: SELF.MAINPATH
+      group_cfg: SELF.group
+    OUTPUT: 
+    - DETAIL

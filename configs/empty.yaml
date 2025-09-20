@@ -1,0 +1,6 @@
+WORKFLOW:
+    empty_opt:
+      FUNCTION: strategies.group_strategies.empty_opt
+      INPUT: ~
+      OUTPUT: 
+      - DETAIL
